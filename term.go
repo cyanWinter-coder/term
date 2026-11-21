@@ -22,7 +22,14 @@ const (
 // Read reads up to len(b) bytes from the terminal. It returns the number of
 // bytes read and an error, if any. EOF is signaled by a zero count with
 // err set to io.EOF.
+//
+// If a transactional session owns the terminal and has been torn down
+// (closed, cancelled, restarted, or broken), Read returns ErrSessionClosed
+// without touching the device.
 func (t *Term) Read(b []byte) (int, error) {
+	if err := t.ioErr(); err != nil {
+		return 0, err
+	}
 	n, e := unix.Read(t.fd, b)
 	if n < 0 {
 		n = 0
@@ -52,7 +59,14 @@ func (t *Term) SetOption(options ...func(*Term) error) error {
 // Write writes len(b) bytes to the terminal. It returns the number of bytes
 // written and an error, if any. Write returns a non-nil error when n !=
 // len(b).
+//
+// If a transactional session owns the terminal and has been torn down
+// (closed, cancelled, restarted, or broken), Write returns ErrSessionClosed
+// without touching the device.
 func (t *Term) Write(b []byte) (int, error) {
+	if err := t.ioErr(); err != nil {
+		return 0, err
+	}
 	n, e := unix.Write(t.fd, b)
 	if n < 0 {
 		n = 0

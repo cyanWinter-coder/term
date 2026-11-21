@@ -192,6 +192,87 @@ len(b).
 
 
 
+### func (\*Term) BeginSession
+``` go
+func (t *Term) BeginSession(cfg SessionConfig) (*Session, error)
+```
+BeginSession starts a transactional terminal session. The complete current
+termios is captured first, then cfg.Options are applied in order; if any
+option fails the captured state is rolled back and no session is created.
+The session restores the captured termios through a single cleanup path when
+Close is called, the context is cancelled, SendBreak is used, or Restart
+replaces the session. Nested sessions reject the operation with
+ErrTermiosConflict when another process has modified the terminal.
+
+
+
+
+## type SessionConfig
+``` go
+type SessionConfig struct {
+    Ctx          context.Context
+    Options      []func(*Term) error
+    DrainTimeout time.Duration
+}
+```
+SessionConfig configures a transactional terminal session. DrainTimeout
+bounds how long Close waits for queued output to drain; on timeout the local
+attributes are still restored and Close returns ErrDrainTimeout.
+
+
+
+
+## type Session
+``` go
+type Session struct {
+    // contains filtered or unexported fields
+}
+```
+Session is a transactional terminal session. Close is idempotent; after the
+cleanup path has run, Read and Write return ErrSessionClosed.
+
+
+### func (\*Session) Close
+``` go
+func (s *Session) Close() error
+```
+Close ends the session, optionally drains output, and restores the termios
+captured when the session began. It is safe to call more than once.
+
+
+### func (\*Session) SendBreak
+``` go
+func (s *Session) SendBreak() error
+```
+SendBreak transmits a break and then runs the same single cleanup path as
+Close.
+
+
+### func (\*Session) Restart
+``` go
+func (s *Session) Restart() (*Session, error)
+```
+Restart tears the session down through the single cleanup path and starts a
+fresh session with the same configuration.
+
+
+### func (\*Session) Done
+``` go
+func (s *Session) Done() <-chan struct{}
+```
+Done returns a channel closed once the cleanup path has completed.
+
+
+### func (\*Session) Err
+``` go
+func (s *Session) Err() error
+```
+Err returns the error recorded by the cleanup run, or nil while active and
+after a clean shutdown.
+
+
+
+
 
 
 

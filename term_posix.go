@@ -3,6 +3,7 @@
 package term
 
 import (
+	"sync"
 	"time"
 
 	"github.com/pkg/term/termios"
@@ -14,6 +15,11 @@ type Term struct {
 	name string
 	fd   int
 	orig unix.Termios // original state of the terminal, see Open and Restore
+
+	// mu guards session and state touched through the transactional
+	// session API. The documented lock order is mu before Session.mu.
+	mu      sync.Mutex
+	session *Session // active transactional session, or the last closed one
 }
 
 // SetAttr returns an option function which will apply the provided modifier to
@@ -252,9 +258,31 @@ func (t *Term) RI() (bool, error) {
 	return status&unix.TIOCM_RI == unix.TIOCM_RI, err
 }
 
-// Close closes the device and releases any associated resources.
+// Close closes the device and releases any associated resources. If a
+// transactional session is still active it is torn down first, restoring the
+// terminal attributes captured when the session began.
 func (t *Term) Close() error {
+	t.mu.Lock()
+	s := t.session
+	t.mu.Unlock()
+	if s != nil {
+		// best effort; the fd is closed below regardless
+		_ = s.shutdown(reasonClose)
+	}
 	err := unix.Close(t.fd)
 	t.fd = -1
 	return err
+}
+
+// ioErr returns ErrSessionClosed when the session attached to t has already
+// been torn down, so that reads and writes fail with an explicit, stable
+// error instead of touching a device whose terminal state was restored.
+func (t *Term) ioErr() error {
+	t.mu.Lock()
+	s := t.session
+	t.mu.Unlock()
+	if s != nil {
+		return s.closedErr()
+	}
+	return nil
 }

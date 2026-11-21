@@ -35,7 +35,16 @@ var _ interface {
 	SetSpeed(baud int) error
 	GetSpeed() (int, error)
 	Write(b []byte) (int, error)
+	BeginSession(cfg SessionConfig) (*Session, error)
 } = new(Term)
+
+var _ interface {
+	Close() error
+	SendBreak() error
+	Restart() (*Session, error)
+	Done() <-chan struct{}
+	Err() error
+} = new(Session)
 
 func TestTermSetCbreak(t *testing.T) {
 	tt := opendev(t)

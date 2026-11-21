@@ -1,11 +1,23 @@
 package term
 
 import (
+	"context"
 	"errors"
+	"time"
 )
 
 type Term struct {
 }
+
+// SessionConfig mirrors the POSIX configuration for a transactional session.
+type SessionConfig struct {
+	Ctx          context.Context
+	Options      []func(*Term) error
+	DrainTimeout time.Duration
+}
+
+// Session mirrors the POSIX transactional terminal session.
+type Session struct{}
 
 var errNotSupported = errors.New("not supported")
 
@@ -106,5 +118,35 @@ func (t *Term) RTS() (bool, error) {
 // Restore restores the state of the terminal captured at the point that
 // the terminal was originally opened.
 func (t *Term) Restore() error {
+	return errNotSupported
+}
+
+// BeginSession starts a transactional terminal session.
+func (t *Term) BeginSession(cfg SessionConfig) (*Session, error) {
+	return nil, errNotSupported
+}
+
+// Close ends a transactional terminal session.
+func (s *Session) Close() error {
+	return errNotSupported
+}
+
+// SendBreak transmits a break and ends a transactional terminal session.
+func (s *Session) SendBreak() error {
+	return errNotSupported
+}
+
+// Restart ends and immediately restarts a transactional terminal session.
+func (s *Session) Restart() (*Session, error) {
+	return nil, errNotSupported
+}
+
+// Done returns a channel closed once the session cleanup has completed.
+func (s *Session) Done() <-chan struct{} {
+	return nil
+}
+
+// Err returns the error recorded by the session cleanup path.
+func (s *Session) Err() error {
 	return errNotSupported
 }
